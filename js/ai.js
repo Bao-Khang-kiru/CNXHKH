@@ -128,8 +128,8 @@ export function updateApiKeyStatus() {
   const hasKey = hasApiKey();
   btns.forEach(btn => {
     btn.innerHTML = hasKey 
-      ? `⚙️ API Key <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#28a745;vertical-align:middle;margin-left:4px;" title="Đã lưu API Key"></span>`
-      : `⚙️ API Key`;
+      ? `⚙️ <span class="nav-btn-text">API Key</span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#28a745;vertical-align:middle;margin-left:3px;" title="Đã lưu API Key"></span>`
+      : `⚙️ <span class="nav-btn-text">API Key</span>`;
   });
 }
 

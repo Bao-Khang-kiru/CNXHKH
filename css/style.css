@@ -98,6 +98,10 @@ h1, h2, h3, h4 {
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
 
+.nav-btn-text, .brand-sub {
+  display: inline;
+}
+
 .navbar__brand {
   font-weight: 700;
   font-size: 1.1rem;
@@ -1067,26 +1071,51 @@ input, select, textarea {
 /* Small Screens & Mobile Phones (< 600px) */
 @media (max-width: 600px) {
   .navbar {
-    padding: 0 10px;
-    height: 56px;
+    padding: 0 8px;
+    height: 52px;
   }
   .navbar__brand {
     font-size: 0.95rem;
     gap: 4px;
+    flex-shrink: 0;
+  }
+  .brand-sub {
+    display: none !important; /* Hide "Quiz" on mobile */
   }
   .navbar__right {
+    display: flex;
+    align-items: center;
     gap: 6px;
+    flex-shrink: 0;
   }
   .navbar__name {
-    display: none;
+    display: none !important;
   }
   .navbar .btn--sm {
-    padding: 6px 8px;
-    font-size: 0.76rem;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+  /* On mobile, hide text in secondary icon buttons (API Key, Leaderboard) */
+  .navbar .btn--secondary .nav-btn-text {
+    display: none !important;
+  }
+  .navbar .btn--secondary {
+    padding: 6px 10px;
+    font-size: 1rem; /* Crisp, tappable emoji icon */
+  }
+  .navbar .btn--primary {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
   }
   .navbar__avatar {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
   }
 
   /* Quiz Layout on Mobile */
