@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Làm bài - CNXHKH Quiz</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>" />
+  <style>
+    /* Active state for keyword button */
+    #btn-highlight.active {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="navbar">
+  <a class="navbar__brand" href="index.html">
+    ← <span>CNXHKH</span>&nbsp;Quiz
+  </a>
+  <div class="navbar__right">
+    <button id="btn-api-key" class="btn btn--secondary btn--sm" title="Cài đặt Gemini API Key">⚙️ API Key</button>
+    <span id="mode-badge" class="text-muted" style="font-size:0.8rem;color:#aaa;"></span>
+    <!-- Timer (only shown in exam mode) -->
+    <div id="timer" class="timer hidden">45:00</div>
+  </div>
+</nav>
+
+<!-- ===================== QUIZ LAYOUT ===================== -->
+<div class="quiz-layout">
+
+  <!-- Quiz Header -->
+  <div class="quiz-header">
+    <span id="question-meta" class="quiz-progress-info">Câu 1/40</span>
+    <div class="progress-bar" style="flex:1;max-width:300px;">
+      <div class="progress-bar__fill" id="progress-bar-fill" style="width:0%"></div>
+    </div>
+    <span id="progress-label" style="font-size:0.8rem;color:var(--color-text-muted);white-space:nowrap;">1 / 40</span>
+  </div>
+
+  <!-- Quiz Body -->
+  <div class="quiz-body">
+    <div class="question-card card">
+      <!-- Question text -->
+      <p id="question-text" class="question-text"></p>
+
+      <!-- Options -->
+      <ul id="options-list" class="options-list" role="list"></ul>
+
+      <!-- AI Explanation box (hidden by default) -->
+      <div id="ai-explain-box" class="ai-explain-box hidden"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== FIXED CONTROLS ===================== -->
+<div class="quiz-controls">
+  <div class="quiz-controls__left">
+    <button id="btn-highlight" class="btn btn--secondary btn--sm">🔍 Từ khóa</button>
+    <button id="btn-explain" class="btn btn--secondary btn--sm hidden">🤖 Tại sao sai?</button>
+  </div>
+  <div class="quiz-controls__right">
+    <button id="btn-next" class="btn btn--primary" disabled>Câu tiếp →</button>
+  </div>
+</div>
+
+<!-- ===================== CHATBOT ===================== -->
+<button id="chatbot-toggle" class="chatbot-toggle" title="Hỏi AI">💬</button>
+
+<div id="chatbot-panel" class="chatbot-panel hidden">
+  <div class="chatbot-header">
+    🤖 Trợ lý CNXHKH
+    <button id="chat-close" class="chatbot-close">✕</button>
+  </div>
+  <div id="chat-messages" class="chatbot-messages"></div>
+  <div class="chatbot-input-row">
+    <input id="chat-input" class="chatbot-input" type="text" placeholder="Hỏi về bài học..." autocomplete="off" />
+    <button id="chat-send" class="chatbot-send">Gửi</button>
+  </div>
+</div>
+
+<!-- ===================== GAME OVER OVERLAY (Survival) ===================== -->
+<div id="game-over-overlay" class="overlay hidden">
+  <div class="overlay__box">
+    <div class="overlay__icon">💀</div>
+    <div class="overlay__title">Game Over!</div>
+    <div class="overlay__sub">Bạn đã trả lời đúng liên tiếp</div>
+    <div class="overlay__streak" id="streak-count">0</div>
+    <div style="color:var(--color-text-muted);font-size:0.85rem;margin-bottom:24px;">câu</div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button id="btn-restart-survival" class="btn btn--primary">🔄 Chơi lại</button>
+      <button id="btn-go-home-overlay" class="btn btn--secondary">🏠 Về trang chủ</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- ===================== SCRIPT ===================== -->
+<script type="module" src="js/quiz.js"></script>
+
+</body>
+</html>

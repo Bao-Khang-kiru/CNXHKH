@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hồ sơ - CNXHKH Quiz</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👤</text></svg>" />
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a class="navbar__brand" href="index.html">
+    ← <span>CNXHKH</span>&nbsp;Quiz
+  </a>
+  <div class="navbar__right">
+    <button id="btn-api-key" class="btn btn--secondary btn--sm" title="Cài đặt Gemini API Key">⚙️ API Key</button>
+    <button id="btn-login" class="btn btn--primary btn--sm">🔑 Đăng nhập</button>
+    <div id="user-info" class="navbar__user hidden">
+      <img id="user-avatar" class="navbar__avatar" src="" alt="Avatar" />
+      <span id="user-name" class="navbar__name"></span>
+      <button id="btn-logout" class="btn btn--secondary btn--sm">Đăng xuất</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Profile Hero (shown when logged in) -->
+<div id="profile-content" class="hidden">
+
+  <div class="profile-hero">
+    <img id="profile-avatar" class="profile-avatar"
+      src="" alt="Avatar"
+      onerror="this.src='https://ui-avatars.com/api/?name=U&background=e94560&color=fff&size=80'" />
+    <div class="profile-name" id="profile-name">—</div>
+    <div class="profile-email" id="profile-email">—</div>
+  </div>
+
+  <main class="container" style="padding-top:16px;padding-bottom:48px;">
+
+    <!-- Stats Grid -->
+    <div class="section-title">📊 Thống kê</div>
+    <div class="stats-grid" style="margin-top:12px;">
+      <div class="stat-card">
+        <div class="stat-card__val" id="stat-total">0</div>
+        <div class="stat-card__label">Tổng câu đã làm</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__val" id="stat-pct">0%</div>
+        <div class="stat-card__label">Tỷ lệ đúng TB</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__val" id="stat-mistakes">0</div>
+        <div class="stat-card__label">Câu trong Tử địa</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__val" id="stat-answered">0</div>
+        <div class="stat-card__label">Câu đã gặp (local)</div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Chapter Chart -->
+    <div class="section-title">📈 Tỷ lệ đúng theo Chương</div>
+    <p class="text-muted" style="font-size:0.82rem;margin:4px 0 12px;">Dựa trên dữ liệu Firebase. Cần đăng nhập và có lịch sử làm bài.</p>
+    <div class="card chapter-chart" id="chapter-chart"></div>
+
+    <hr class="divider" />
+
+    <!-- Mistake bank -->
+    <div class="section-title">☠️ Tử địa (<span id="mb-count">0</span> câu)</div>
+    <p class="text-muted" style="font-size:0.82rem;margin:4px 0 12px;">
+      Các câu bạn đã trả lời sai. Trả lời đúng 3 lần liên tiếp để xóa khỏi danh sách.
+    </p>
+    <div id="mistake-list-wrap">
+      <div id="mistake-empty" class="empty-state">
+        <div class="empty-state__icon">✅</div>
+        <p>Tử địa trống! Bạn chưa sai câu nào (hoặc đã ôn hết).</p>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;display:none;" id="mistake-card-list">
+        <div id="mistake-items"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn--primary" onclick="goMistake()">☠️ Ôn Tử địa</button>
+      <button class="btn btn--secondary" id="btn-clear-mistakes" onclick="clearMistakes()">🗑️ Xóa toàn bộ Tử địa</button>
+    </div>
+
+  </main>
+</div>
+
+<!-- Guest state (not logged in) -->
+<div id="guest-content">
+  <div class="login-center">
+    <div class="login-box card">
+      <div style="font-size:3rem;margin-bottom:12px;">👤</div>
+      <h2>Đăng nhập để xem hồ sơ</h2>
+      <p>Lưu tiến độ, xem thống kê chi tiết và lên Bảng xếp hạng.</p>
+      <button id="btn-login-profile" class="btn btn--google btn--block" style="margin-bottom:12px;">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.5 6.5 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.4 18.9 12 24 12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.5 6.5 29.6 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.1 35.5 26.7 36 24 36c-5.3 0-9.7-3.4-11.3-8H6.3C9.7 35.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.4 4.2-4.5 5.5l6.2 5.2C36.9 36.7 44 31 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+        Đăng nhập với Google
+      </button>
+      <p class="text-muted" style="font-size:0.82rem;">
+        Thống kê local vẫn được lưu ngay cả khi chưa đăng nhập.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script type="module">
+  import { initNavAuth, showToast, getMistakeCount, loadMistakeBank, saveMistakeBank, getAnsweredCount } from "./js/app.js";
+  import { getUserProfile, firebaseReady } from "./js/firebase.js";
+  import { getChapterList } from "./js/data.js";
+
+  window.goMistake = function() {
+    import("./js/app.js").then(({ startQuiz, getMistakeCount }) => {
+      if (getMistakeCount() === 0) {
+        showToast("Tử địa trống rỗng!");
+        return;
+      }
+      startQuiz({ mode: "mistake" });
+    });
+  };
+
+  window.clearMistakes = function() {
+    if (!confirm("Xóa toàn bộ danh sách Tử địa?")) return;
+    saveMistakeBank({});
+    showToast("Đã xóa Tử địa!");
+    renderMistakeBank();
+  };
+
+  initNavAuth();
+
+  document.addEventListener("authReady", async (e) => {
+    const user = e.detail;
+
+    if (user) {
+      // Show profile content
+      document.getElementById("profile-content").classList.remove("hidden");
+      document.getElementById("guest-content").classList.add("hidden");
+
+      // Fill profile header
+      document.getElementById("profile-avatar").src = user.photoURL
+        || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || "U")}&background=e94560&color=fff&size=80`;
+      document.getElementById("profile-name").textContent = user.displayName || "Người dùng";
+      document.getElementById("profile-email").textContent = user.email || "";
+
+      // Update navbar user info
+      document.getElementById("user-avatar").src = document.getElementById("profile-avatar").src;
+
+      // Load stats
+      await loadStats(user);
+    } else {
+      document.getElementById("profile-content").classList.add("hidden");
+      document.getElementById("guest-content").classList.remove("hidden");
+
+      // Wire up login button on guest page
+      const loginBtn = document.getElementById("btn-login-profile");
+      if (loginBtn) {
+        loginBtn.addEventListener("click", () => {
+          document.getElementById("btn-login")?.click();
+        });
+      }
+    }
+
+    // Always render local mistake bank
+    renderMistakeBank();
+    renderLocalStats();
+  });
+
+  async function loadStats(user) {
+    const statTotal = document.getElementById("stat-total");
+    const statPct = document.getElementById("stat-pct");
+
+    if (firebaseReady) {
+      try {
+        const profile = await getUserProfile(user.uid);
+        if (profile) {
+          statTotal.textContent = profile.totalAnswered || 0;
+          const pct = profile.totalAnswered > 0
+            ? Math.round((profile.totalCorrect / profile.totalAnswered) * 100)
+            : 0;
+          statPct.textContent = pct + "%";
+
+          // Chapter chart from Firebase
+          renderChapterChart(profile.chapterStats || {});
+        }
+      } catch (e) {
+        console.warn("Profile load error:", e);
+      }
+    } else {
+      statTotal.textContent = "—";
+      statPct.textContent = "—";
+      document.getElementById("chapter-chart").innerHTML = `
+        <div class="empty-state" style="padding:24px;">
+          <p>Cần cấu hình Firebase để xem thống kê này.</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderLocalStats() {
+    document.getElementById("stat-mistakes").textContent = getMistakeCount();
+    document.getElementById("stat-answered").textContent = getAnsweredCount();
+  }
+
+  async function renderChapterChart(chapterStats) {
+    const chart = document.getElementById("chapter-chart");
+    const chapters = await getChapterList();
+
+    if (Object.keys(chapterStats).length === 0) {
+      chart.innerHTML = `<div class="empty-state" style="padding:24px;"><p>Chưa có dữ liệu. Hãy làm bài để xem thống kê.</p></div>`;
+      return;
+    }
+
+    let html = "";
+    chapters.forEach(ch => {
+      const key = `ch${ch.chapter}`;
+      const stats = chapterStats[key] || { answered: 0, correct: 0 };
+      const pct = stats.answered > 0 ? Math.round((stats.correct / stats.answered) * 100) : 0;
+      const shortName = `Chương ${ch.chapter}`;
+      html += `
+        <div class="chart-row">
+          <div class="chart-row__label" title="${ch.chapter_name}">${shortName}</div>
+          <div class="chart-row__bar-wrap">
+            <div class="chart-row__bar" style="width:${pct}%"></div>
+          </div>
+          <div class="chart-row__pct">${pct}%</div>
+        </div>
+      `;
+    });
+    chart.innerHTML = html;
+    chart.style.padding = "16px";
+  }
+
+  async function renderMistakeBank() {
+    const bank = loadMistakeBank();
+    const ids = Object.keys(bank).map(Number);
+    const mbCount = ids.length;
+
+    document.getElementById("mb-count").textContent = mbCount;
+    document.getElementById("stat-mistakes").textContent = mbCount;
+
+    const emptyEl = document.getElementById("mistake-empty");
+    const cardList = document.getElementById("mistake-card-list");
+    const itemsEl = document.getElementById("mistake-items");
+
+    if (mbCount === 0) {
+      emptyEl.classList.remove("hidden");
+      cardList.style.display = "none";
+      return;
+    }
+
+    emptyEl.classList.add("hidden");
+    cardList.style.display = "block";
+    itemsEl.innerHTML = "";
+
+    // Load question data to show titles
+    const { loadQuestions } = await import("./js/data.js");
+    const all = await loadQuestions();
+    const qMap = {};
+    all.forEach(q => { qMap[q.id] = q; });
+
+    let html = "";
+    ids.slice(0, 30).forEach((id, i) => {
+      const entry = bank[id];
+      const q = qMap[id];
+      const preview = q ? q.question.substring(0, 80) + (q.question.length > 80 ? "…" : "") : `Câu #${id}`;
+      const streakDots = Array.from({length: 3}, (_, i) =>
+        `<span style="
+          display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:2px;
+          background:${i < (entry.correctStreak || 0) ? 'var(--color-success)' : '#ddd'}"
+        ></span>`
+      ).join("");
+      html += `
+        <div class="wrong-item">
+          <div class="wrong-item__num">${i + 1}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:0.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</div>
+            <div style="margin-top:4px;font-size:0.78rem;color:var(--color-text-muted);display:flex;gap:12px;align-items:center;">
+              <span>❌ Sai ${entry.wrongCount} lần</span>
+              <span>Tiến độ: ${streakDots}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    if (ids.length > 30) {
+      html += `<div style="padding:10px 16px;text-align:center;font-size:0.8rem;color:var(--color-text-muted);">
+        và ${ids.length - 30} câu khác...
+      </div>`;
+    }
+
+    itemsEl.innerHTML = html;
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CNXHKH - Ôn tập Trắc nghiệm</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
+</head>
+<body>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="navbar">
+  <a class="navbar__brand" href="index.html">
+    📚 <span>CNXHKH</span>&nbsp;Quiz
+  </a>
+  <div class="navbar__right">
+    <button id="btn-api-key" class="btn btn--secondary btn--sm" title="Cài đặt Gemini API Key">⚙️ API Key</button>
+    <a href="leaderboard.html" class="btn btn--secondary btn--sm">🏆 Bảng xếp hạng</a>
+    <!-- Logged-out state -->
+    <button id="btn-login" class="btn btn--primary btn--sm">🔑 Đăng nhập</button>
+    <!-- Logged-in state (hidden by default) -->
+    <div id="user-info" class="navbar__user hidden">
+      <a href="profile.html">
+        <img id="user-avatar" class="navbar__avatar" src="" alt="Avatar" />
+      </a>
+      <span id="user-name" class="navbar__name"></span>
+      <button id="btn-logout" class="btn btn--secondary btn--sm">Đăng xuất</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== HERO ===================== -->
+<div class="hero">
+  <h1>Ôn tập <span>Chủ nghĩa xã hội khoa học</span></h1>
+  <p>202 câu trắc nghiệm · 7 chương · Hỗ trợ AI · Bảng xếp hạng</p>
+</div>
+
+<!-- ===================== MAIN ===================== -->
+<main class="container" style="padding-top:28px; padding-bottom:48px;">
+
+  <!-- Progress bar (global) -->
+  <div class="progress-wrap" id="global-progress-wrap">
+    <div class="progress-label">
+      <span>Tiến độ ôn tập</span>
+      <span id="progress-text">0 / 202 câu</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-bar__fill" id="progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Mode Cards -->
+  <div class="mode-grid" style="margin-top:28px;">
+
+    <!-- Card 1: Học theo Chương -->
+    <div class="mode-card">
+      <span class="mode-card__icon">📚</span>
+      <div class="mode-card__title">Học theo Chương</div>
+      <div class="mode-card__desc">Chọn chương muốn ôn, làm hết tất cả câu trong chương đó.</div>
+      <div class="mode-card__action">
+        <select id="chapter-select" class="chapter-select" style="margin-bottom:10px;">
+          <option value="">-- Chọn chương --</option>
+        </select>
+        <button class="btn btn--primary btn--block" onclick="startChapter()">Bắt đầu →</button>
+      </div>
+    </div>
+
+    <!-- Card 2: Thi thử -->
+    <div class="mode-card" onclick="startExam()">
+      <span class="mode-card__icon">📝</span>
+      <div class="mode-card__title">Thi thử</div>
+      <div class="mode-card__desc">40 câu ngẫu nhiên · Giới hạn 45 phút · Tính điểm & xếp hạng.</div>
+      <div class="mode-card__action">
+        <button class="btn btn--primary btn--block">Thi ngay →</button>
+      </div>
+    </div>
+
+    <!-- Card 3: Tử địa -->
+    <div class="mode-card" id="mistake-card">
+      <span class="mode-card__icon">☠️</span>
+      <div class="mode-card__title">Tử địa</div>
+      <div class="mode-card__desc">Ôn lại các câu đã trả lời sai. Trả lời đúng 3 lần liên tiếp để "tốt nghiệp".</div>
+      <div class="mode-card__action">
+        <div id="mistake-count-badge" class="text-muted mb-16" style="font-size:0.85rem;margin-bottom:8px;"></div>
+        <button class="btn btn--primary btn--block" onclick="startMistake()">Luyện →</button>
+      </div>
+    </div>
+
+    <!-- Card 4: Sinh tồn -->
+    <div class="mode-card" onclick="startSurvival()">
+      <span class="mode-card__icon">⚡</span>
+      <div class="mode-card__title">Sinh tồn</div>
+      <div class="mode-card__desc">Làm từ câu 1 đến hết. Sai một câu là Game Over ngay! Thử thách streak.</div>
+      <div class="mode-card__action">
+        <button class="btn btn--dark btn--block">Thử thách →</button>
+      </div>
+    </div>
+
+    <!-- Card 5: Soi từ khóa -->
+    <div class="mode-card" onclick="startKeyword()">
+      <span class="mode-card__icon">🔍</span>
+      <div class="mode-card__title">Soi từ khóa</div>
+      <div class="mode-card__desc">Làm bài với các từ khóa quan trọng được highlight để dễ ghi nhớ.</div>
+      <div class="mode-card__action">
+        <button class="btn btn--secondary btn--block">Khởi động →</button>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script type="module">
+  import { initNavAuth, startQuiz, getMistakeCount, showToast, loadMistakeBank } from "./js/app.js";
+  import { getChapterList, loadQuestions } from "./js/data.js";
+
+  // Make functions available globally for onclick handlers
+  window.startChapter = startChapter;
+  window.startExam = startExam;
+  window.startMistake = startMistake;
+  window.startSurvival = startSurvival;
+  window.startKeyword = startKeyword;
+
+  // Init auth navbar
+  initNavAuth();
+
+  // Load chapter list
+  async function initChapterSelect() {
+    const chapters = await getChapterList();
+    const sel = document.getElementById("chapter-select");
+    chapters.forEach(ch => {
+      const opt = document.createElement("option");
+      opt.value = ch.chapter;
+      opt.textContent = `Chương ${ch.chapter}: ${ch.chapter_name} (${ch.count} câu)`;
+      sel.appendChild(opt);
+    });
+  }
+
+  // Update progress bar
+  async function updateProgress() {
+    const { getAnsweredCount } = await import("./js/app.js");
+    const answered = getAnsweredCount();
+    const total = 202;
+    const pct = Math.min(100, Math.round((answered / total) * 100));
+    document.getElementById("progress-fill").style.width = pct + "%";
+    document.getElementById("progress-text").textContent = `${answered} / ${total} câu`;
+  }
+
+  // Update mistake count badge
+  function updateMistakeCount() {
+    const count = getMistakeCount();
+    const badge = document.getElementById("mistake-count-badge");
+    if (badge) {
+      if (count === 0) {
+        badge.textContent = "✅ Chưa có câu nào cần ôn!";
+      } else {
+        badge.textContent = `⚠️ Đang có ${count} câu cần ôn lại`;
+        badge.style.color = "#e94560";
+      }
+    }
+  }
+
+  // --- Mode start functions ---
+  function startChapter() {
+    const sel = document.getElementById("chapter-select");
+    const chapter = parseInt(sel.value);
+    if (!chapter) { showToast("Vui lòng chọn chương!"); return; }
+    startQuiz({ mode: "chapter", chapter });
+  }
+
+  function startExam() {
+    startQuiz({ mode: "exam" });
+  }
+
+  function startMistake() {
+    const count = getMistakeCount();
+    if (count === 0) {
+      showToast("Chưa có câu nào trong Tử địa. Hãy làm bài trước!");
+      return;
+    }
+    startQuiz({ mode: "mistake" });
+  }
+
+  function startSurvival() {
+    startQuiz({ mode: "survival" });
+  }
+
+  function startKeyword() {
+    startQuiz({ mode: "keyword" });
+  }
+
+  // Init
+  initChapterSelect();
+  updateProgress();
+  updateMistakeCount();
+</script>
+
+</body>
+</html>

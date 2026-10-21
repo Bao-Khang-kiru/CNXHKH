@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kết quả - CNXHKH Quiz</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>" />
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a class="navbar__brand" href="index.html">
+    📚 <span>CNXHKH</span>&nbsp;Quiz
+  </a>
+  <div class="navbar__right">
+    <button id="btn-api-key" class="btn btn--secondary btn--sm" title="Cài đặt Gemini API Key">⚙️ API Key</button>
+    <button id="btn-login" class="btn btn--primary btn--sm">🔑 Đăng nhập</button>
+    <div id="user-info" class="navbar__user hidden">
+      <a href="profile.html">
+        <img id="user-avatar" class="navbar__avatar" src="" alt="Avatar" />
+      </a>
+      <span id="user-name" class="navbar__name"></span>
+      <button id="btn-logout" class="btn btn--secondary btn--sm">Đăng xuất</button>
+    </div>
+  </div>
+</nav>
+
+<!-- RESULTS HERO -->
+<div class="results-hero" id="results-hero">
+  <div class="results-trophy" id="results-trophy">🏆</div>
+  <div class="results-score" id="results-score"><span>—</span> / —</div>
+  <div class="results-badge" id="results-badge">...</div>
+  <div class="results-stats" id="results-stats"></div>
+</div>
+
+<main class="container" style="padding-bottom:48px;">
+
+  <!-- Action buttons -->
+  <div class="flex gap-12 justify-between" style="flex-wrap:wrap;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button id="btn-save-score" class="btn btn--primary hidden">
+        💾 Lưu lên Bảng xếp hạng
+      </button>
+      <button id="btn-retry" class="btn btn--secondary">🔄 Làm lại</button>
+      <a href="index.html" class="btn btn--secondary">🏠 Trang chủ</a>
+    </div>
+    <a href="leaderboard.html" class="btn btn--dark">🏆 Bảng xếp hạng</a>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Wrong answers list -->
+  <div id="wrong-section" class="hidden">
+    <div class="section-title">❌ Câu trả lời sai (<span id="wrong-count">0</span> câu)</div>
+    <p class="text-muted" style="margin-top:4px;margin-bottom:12px;font-size:0.85rem;">
+      Click vào câu để xem chi tiết. Các câu này đã được thêm vào Tử địa.
+    </p>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div id="wrong-list" class="wrong-list"></div>
+    </div>
+  </div>
+
+  <!-- Wrong answer detail modal -->
+  <div id="wrong-detail-modal" class="overlay hidden" onclick="this.classList.add('hidden')">
+    <div class="overlay__box" style="max-width:600px;text-align:left;" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+        <h3 style="font-size:1rem;color:var(--color-primary);">Chi tiết câu hỏi</h3>
+        <button onclick="document.getElementById('wrong-detail-modal').classList.add('hidden')"
+          style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--color-text-muted);">✕</button>
+      </div>
+      <p id="modal-question" style="font-weight:600;margin-bottom:16px;line-height:1.6;"></p>
+      <div id="modal-options" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
+  <!-- No wrong answers message -->
+  <div id="perfect-msg" class="hidden" style="text-align:center;padding:32px 0;">
+    <div style="font-size:3rem;">🎉</div>
+    <div style="font-weight:700;color:var(--color-primary);font-size:1.1rem;">Tuyệt vời! Không có câu nào sai!</div>
+    <p class="text-muted" style="margin-top:8px;">Bạn thật xuất sắc. Hãy thử thách ở chế độ khó hơn!</p>
+  </div>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script type="module">
+  import { loadLastResult, saveLastResult, initNavAuth, showToast, formatTime, getScoreBadge } from "./js/app.js";
+  import { submitLeaderboardScore, getCurrentUser } from "./js/firebase.js";
+
+  initNavAuth();
+
+  const result = loadLastResult();
+  if (!result) {
+    window.location.href = "index.html";
+  } else {
+    renderResults(result);
+  }
+
+  function renderResults(result) {
+    const { mode, score, total, timeTaken, wrongAnswers, streak } = result;
+
+    // For survival mode
+    if (mode === "survival") {
+      document.getElementById("results-trophy").textContent = "⚡";
+      document.getElementById("results-score").innerHTML = `<span>${streak || score}</span> câu liên tiếp`;
+      document.getElementById("results-badge").textContent = "Chế độ Sinh tồn";
+      document.getElementById("results-stats").innerHTML = `
+        <div class="results-stat">
+          <div class="results-stat__value">${formatTime(timeTaken)}</div>
+          <div class="results-stat__label">Thời gian</div>
+        </div>
+      `;
+      renderWrongAnswers(wrongAnswers || []);
+      setupSaveButton(mode, { streak: streak || score, timeTaken });
+      return;
+    }
+
+    // Regular mode
+    const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+    const badge = getScoreBadge(pct);
+
+    document.getElementById("results-trophy").textContent = badge.icon;
+    document.getElementById("results-score").innerHTML = `<span>${score}</span> / ${total}`;
+    document.getElementById("results-badge").textContent = `${badge.icon} ${badge.title}`;
+
+    document.getElementById("results-stats").innerHTML = `
+      <div class="results-stat">
+        <div class="results-stat__value" style="color:var(--color-accent)">${pct}%</div>
+        <div class="results-stat__label">Tỷ lệ đúng</div>
+      </div>
+      <div class="results-stat">
+        <div class="results-stat__value">${score}</div>
+        <div class="results-stat__label">Câu đúng</div>
+      </div>
+      <div class="results-stat">
+        <div class="results-stat__value" style="color:var(--color-danger)">${total - score}</div>
+        <div class="results-stat__label">Câu sai</div>
+      </div>
+      <div class="results-stat">
+        <div class="results-stat__value">${formatTime(timeTaken)}</div>
+        <div class="results-stat__label">Thời gian</div>
+      </div>
+    `;
+
+    renderWrongAnswers(wrongAnswers || []);
+    setupSaveButton(mode, { score, total, pct, timeTaken });
+
+    // Retry: same mode
+    document.getElementById("btn-retry").addEventListener("click", () => {
+      import("./js/app.js").then(({ startQuiz }) => {
+        startQuiz({ mode, chapter: result.chapter });
+      });
+    });
+  }
+
+  function renderWrongAnswers(wrongAnswers) {
+    const section = document.getElementById("wrong-section");
+    const perfectMsg = document.getElementById("perfect-msg");
+    const list = document.getElementById("wrong-list");
+    const countEl = document.getElementById("wrong-count");
+
+    if (!wrongAnswers || wrongAnswers.length === 0) {
+      perfectMsg.classList.remove("hidden");
+      return;
+    }
+
+    section.classList.remove("hidden");
+    countEl.textContent = wrongAnswers.length;
+
+    const labels = ["A", "B", "C", "D"];
+    wrongAnswers.forEach((item, i) => {
+      const div = document.createElement("div");
+      div.className = "wrong-item";
+      div.innerHTML = `
+        <div class="wrong-item__num">${item.questionIndex || i + 1}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">
+            ${item.question.question}
+          </div>
+          <div style="margin-top:4px;display:flex;gap:12px;font-size:0.8rem;">
+            <span style="color:var(--color-danger)">❌ Bạn chọn: ${labels[item.userAnswer]}</span>
+            <span style="color:var(--color-success)">✓ Đúng: ${labels[item.correctAnswer]}</span>
+          </div>
+        </div>
+      `;
+      div.addEventListener("click", () => showWrongDetail(item));
+      list.appendChild(div);
+    });
+  }
+
+  function showWrongDetail(item) {
+    const modal = document.getElementById("wrong-detail-modal");
+    const qEl = document.getElementById("modal-question");
+    const optsEl = document.getElementById("modal-options");
+    const labels = ["A", "B", "C", "D"];
+
+    qEl.textContent = item.question.question;
+    optsEl.innerHTML = "";
+
+    item.question.options.forEach((opt, idx) => {
+      const div = document.createElement("div");
+      div.style.cssText = `
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 2px solid var(--color-border);
+        font-size: 0.875rem;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      `;
+      if (idx === item.correctAnswer) {
+        div.style.background = "#e8f5e9";
+        div.style.borderColor = "var(--color-success)";
+      } else if (idx === item.userAnswer) {
+        div.style.background = "#fdecea";
+        div.style.borderColor = "var(--color-danger)";
+      }
+      div.innerHTML = `<strong>${labels[idx]}.</strong> ${opt}`;
+      optsEl.appendChild(div);
+    });
+
+    modal.classList.remove("hidden");
+  }
+
+  function setupSaveButton(mode, data) {
+    const btn = document.getElementById("btn-save-score");
+
+    // Listen for auth state
+    document.addEventListener("authReady", async (e) => {
+      const user = e.detail;
+      if (user && (mode === "exam" || mode === "survival")) {
+        btn.classList.remove("hidden");
+
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner"></span> Đang lưu...';
+          try {
+            const entry = {
+              uid: user.uid,
+              displayName: user.displayName || "Ẩn danh",
+              photoURL: user.photoURL || "",
+              ...data,
+              mode,
+              date: new Date().toISOString(),
+            };
+            const lbMode = mode === "survival" ? "survival" : "exam";
+            await submitLeaderboardScore(lbMode, entry);
+            btn.textContent = "✅ Đã lưu!";
+            showToast("Điểm đã được lưu lên Bảng xếp hạng!");
+          } catch (e) {
+            btn.disabled = false;
+            btn.textContent = "💾 Lưu lên Bảng xếp hạng";
+            showToast("Lỗi khi lưu điểm. Kiểm tra cấu hình Firebase.");
+            console.error(e);
+          }
+        });
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
