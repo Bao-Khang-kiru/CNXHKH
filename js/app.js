@@ -137,7 +137,7 @@ export function openLoginModal(onSuccess) {
           
           <div style="margin-bottom:14px;">
             <label style="display:block;font-size:0.85rem;font-weight:600;margin-bottom:6px;">Tên hoặc Biệt danh:</label>
-            <input id="input-quick-name" type="text" placeholder="Ví dụ: Bảo Khanh, Chiến thần CNXHKH..." 
+            <input id="input-quick-name" type="text" placeholder="Nhập tên của bạn..." 
                    style="width:100%;padding:10px 12px;border:1px solid var(--color-border);border-radius:var(--radius-btn);font-size:0.95rem;box-sizing:border-box;" maxlength="30" />
           </div>
 
