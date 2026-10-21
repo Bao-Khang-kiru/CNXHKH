@@ -2,7 +2,8 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a2e" />
   <title>Hồ sơ - CNXHKH Quiz</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👤</text></svg>" />
@@ -147,7 +148,7 @@
       document.getElementById("profile-avatar").src = user.photoURL
         || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || "U")}&background=e94560&color=fff&size=80`;
       document.getElementById("profile-name").textContent = user.displayName || "Người dùng";
-      document.getElementById("profile-email").textContent = user.email || "";
+      document.getElementById("profile-email").textContent = user.email || "Hồ sơ cá nhân (Thiết bị này)";
 
       // Update navbar user info
       document.getElementById("user-avatar").src = document.getElementById("profile-avatar").src;
@@ -176,30 +177,25 @@
     const statTotal = document.getElementById("stat-total");
     const statPct = document.getElementById("stat-pct");
 
-    if (firebaseReady) {
-      try {
-        const profile = await getUserProfile(user.uid);
-        if (profile) {
-          statTotal.textContent = profile.totalAnswered || 0;
-          const pct = profile.totalAnswered > 0
-            ? Math.round((profile.totalCorrect / profile.totalAnswered) * 100)
-            : 0;
-          statPct.textContent = pct + "%";
-
-          // Chapter chart from Firebase
-          renderChapterChart(profile.chapterStats || {});
-        }
-      } catch (e) {
-        console.warn("Profile load error:", e);
+    try {
+      const profile = await getUserProfile(user.uid);
+      if (profile) {
+        statTotal.textContent = profile.totalAnswered || 0;
+        const pct = profile.totalAnswered > 0
+          ? Math.round((profile.totalCorrect / profile.totalAnswered) * 100)
+          : 0;
+        statPct.textContent = pct + "%";
+        renderChapterChart(profile.chapterStats || {});
+      } else {
+        statTotal.textContent = "0";
+        statPct.textContent = "0%";
+        renderChapterChart({});
       }
-    } else {
-      statTotal.textContent = "—";
-      statPct.textContent = "—";
-      document.getElementById("chapter-chart").innerHTML = `
-        <div class="empty-state" style="padding:24px;">
-          <p>Cần cấu hình Firebase để xem thống kê này.</p>
-        </div>
-      `;
+    } catch (e) {
+      console.warn("Profile load error:", e);
+      statTotal.textContent = "0";
+      statPct.textContent = "0%";
+      renderChapterChart({});
     }
   }
 

@@ -1,18 +1,11 @@
 /**
  * firebase.js - Firebase configuration and helper functions
- * 
- * SETUP INSTRUCTIONS:
- * 1. Go to https://console.firebase.google.com/
- * 2. Create a new project (or use existing one)
- * 3. Enable Authentication > Sign-in method > Google
- * 4. Enable Firestore Database
- * 5. Replace the config values below with your project's values
- * 6. In Firestore Rules, allow authenticated users to read/write their own data
+ * Enhanced with graceful local fallback for offline/GitHub Pages without Firebase setup.
  */
 
-// --- Firebase Config (replace with your actual values) ---
+// --- Firebase Config ---
 const firebaseConfig = {
-  apiKey: "AIzaSyC3GG1qng2rcwjQVpzWxZExQtogOgNkel0",
+  apiKey: "PLACEHOLDER_FIREBASE_API_KEY",
   authDomain: "cnxhkh-quiz.firebaseapp.com",
   projectId: "cnxhkh-quiz",
   storageBucket: "cnxhkh-quiz.firebasestorage.app",
@@ -56,42 +49,88 @@ try {
   db = getFirestore(app);
   firebaseReady = true;
 } catch (e) {
-  console.warn("Firebase init failed – running in offline mode:", e.message);
+  console.warn("Firebase init failed – running in local offline mode:", e.message);
 }
 
 // -------------------------------------------------------
 // AUTH HELPERS
 // -------------------------------------------------------
 
-/** Sign in with Google popup. Returns user or null. */
+/**
+ * Sign in with Google popup.
+ * Throws specific error codes for caller to display friendly messages.
+ */
 export async function signInWithGoogle() {
-  if (!firebaseReady) return null;
+  if (!firebaseReady) {
+    const err = new Error("Chưa kết nối Firebase");
+    err.code = "firebase/not-ready";
+    throw err;
+  }
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
   try {
     const result = await signInWithPopup(auth, provider);
     return result.user;
   } catch (e) {
     console.error("Google sign-in error:", e);
-    return null;
+    throw e;
   }
 }
 
-/** Sign out current user. */
-export async function signOutUser() {
-  if (!firebaseReady) return;
-  await signOut(auth);
+/** Sign out current user from Firebase. */
+export async function signOutFirebase() {
+  if (!firebaseReady || !auth) return;
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.warn("Firebase sign out error:", e);
+  }
 }
 
-/** Listen to auth state changes. Callback receives user or null. */
-export function onAuthChange(callback) {
-  if (!firebaseReady) { callback(null); return; }
-  onAuthStateChanged(auth, callback);
+/** Listen to auth state changes in Firebase. */
+export function onFirebaseAuthStateChanged(callback) {
+  if (!firebaseReady || !auth) {
+    callback(null);
+    return () => {};
+  }
+  return onAuthStateChanged(auth, callback);
 }
 
-/** Get current signed-in user (synchronous snapshot). */
-export function getCurrentUser() {
-  if (!firebaseReady) return null;
+/** Get Firebase user if logged in. */
+export function getFirebaseUser() {
+  if (!firebaseReady || !auth) return null;
   return auth.currentUser;
+}
+
+// -------------------------------------------------------
+// LOCAL LEADERBOARD FALLBACK
+// -------------------------------------------------------
+const LOCAL_LB_KEY = "cnxhkh_local_leaderboard";
+
+function getLocalLeaderboard(mode) {
+  try {
+    const all = JSON.parse(localStorage.getItem(LOCAL_LB_KEY) || "{}");
+    return all[mode] || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalLeaderboard(mode, entry) {
+  try {
+    const all = JSON.parse(localStorage.getItem(LOCAL_LB_KEY) || "{}");
+    const list = all[mode] || [];
+    list.push(entry);
+    if (mode === "exam") {
+      list.sort((a, b) => (b.score - a.score) || ((a.timeTaken || 0) - (b.timeTaken || 0)));
+    } else {
+      list.sort((a, b) => ((b.streak || b.score || 0) - (a.streak || a.score || 0)) || ((a.timeTaken || 0) - (b.timeTaken || 0)));
+    }
+    all[mode] = list.slice(0, 50); // Keep top 50
+    localStorage.setItem(LOCAL_LB_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn("Failed to save local leaderboard:", e);
+  }
 }
 
 // -------------------------------------------------------
@@ -103,101 +142,128 @@ export function getCurrentUser() {
  * Path: users/{uid}
  */
 export async function getUserProfile(uid) {
-  if (!firebaseReady) return null;
-  const ref = doc(db, "users", uid);
-  const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data();
-  // Create default profile
-  const defaults = {
-    totalAnswered: 0,
-    totalCorrect: 0,
-    streakDays: 0,
-    lastStudyDate: null,
-    mistakeBank: {},
-    chapterStats: {},
-    createdAt: serverTimestamp()
-  };
-  await setDoc(ref, defaults);
-  return defaults;
+  // If local user or Firebase offline, load from localStorage
+  if (!firebaseReady || !uid || uid.startsWith("local_")) {
+    try {
+      const stats = JSON.parse(localStorage.getItem("cnxhkh_user_stats") || "{}");
+      return {
+        totalAnswered: stats.totalAnswered || 0,
+        totalCorrect: stats.totalCorrect || 0,
+        chapterStats: stats.chapterStats || {},
+        streakDays: stats.streakDays || 1
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) return snap.data();
+    
+    // Create default profile
+    const defaults = {
+      totalAnswered: 0,
+      totalCorrect: 0,
+      streakDays: 1,
+      lastStudyDate: null,
+      chapterStats: {},
+      createdAt: serverTimestamp()
+    };
+    await setDoc(ref, defaults);
+    return defaults;
+  } catch (e) {
+    console.warn("getUserProfile error, fallback to local:", e);
+    const stats = JSON.parse(localStorage.getItem("cnxhkh_user_stats") || "{}");
+    return {
+      totalAnswered: stats.totalAnswered || 0,
+      totalCorrect: stats.totalCorrect || 0,
+      chapterStats: stats.chapterStats || {},
+      streakDays: stats.streakDays || 1
+    };
+  }
 }
 
 /** Update user profile fields. */
 export async function updateUserProfile(uid, data) {
-  if (!firebaseReady) return;
-  const ref = doc(db, "users", uid);
-  await updateDoc(ref, data);
+  if (!firebaseReady || !uid || uid.startsWith("local_")) return;
+  try {
+    const ref = doc(db, "users", uid);
+    await updateDoc(ref, data);
+  } catch (e) {
+    console.warn("updateUserProfile error:", e);
+  }
 }
 
 /** Record a quiz result. Path: results/{uid}/sessions/{auto-id} */
 export async function saveQuizResult(uid, result) {
-  if (!firebaseReady) return null;
-  const ref = collection(db, "results", uid, "sessions");
-  const docRef = await addDoc(ref, {
-    ...result,
-    createdAt: serverTimestamp()
-  });
-  return docRef.id;
+  if (!firebaseReady || !uid || uid.startsWith("local_")) return null;
+  try {
+    const ref = collection(db, "results", uid, "sessions");
+    const docRef = await addDoc(ref, {
+      ...result,
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (e) {
+    console.warn("saveQuizResult error:", e);
+    return null;
+  }
 }
 
 /**
  * Submit score to leaderboard.
- * Path: leaderboard/{mode}/{auto-id}
- * mode: "exam" | "survival"
+ * Saves locally first, then attempts Firebase if available.
  */
 export async function submitLeaderboardScore(mode, entry) {
-  if (!firebaseReady) return null;
-  const ref = collection(db, "leaderboard", mode, "scores");
-  const docRef = await addDoc(ref, {
-    ...entry,
-    createdAt: serverTimestamp()
-  });
-  return docRef.id;
+  // Always save locally
+  saveLocalLeaderboard(mode, entry);
+
+  if (!firebaseReady) return "local_saved";
+
+  try {
+    const ref = collection(db, "leaderboard", mode, "scores");
+    const docRef = await addDoc(ref, {
+      ...entry,
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (e) {
+    console.warn("Firebase submitLeaderboardScore error (saved locally):", e);
+    return "local_saved";
+  }
 }
 
 /**
  * Fetch leaderboard entries.
- * @param {string} mode - "exam" or "survival"
- * @param {number} topN - how many entries to fetch
+ * Tries Firebase first; falls back to local records.
  */
 export async function getLeaderboard(mode, topN = 20) {
-  if (!firebaseReady) return [];
-  const sortField = mode === "exam" ? "score" : "streak";
-  const ref = collection(db, "leaderboard", mode, "scores");
-  const q = query(ref, orderBy(sortField, "desc"), limit(topN));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
+  const localEntries = getLocalLeaderboard(mode);
 
-/**
- * Sync mistake bank from Firebase.
- * Path: users/{uid}.mistakeBank
- */
-export async function getMistakeBank(uid) {
-  if (!firebaseReady) return null;
-  const profile = await getUserProfile(uid);
-  return profile?.mistakeBank || {};
-}
-
-/** Save entire mistake bank object to Firestore. */
-export async function saveMistakeBank(uid, mistakeBank) {
-  if (!firebaseReady) return;
-  const ref = doc(db, "users", uid);
-  await updateDoc(ref, { mistakeBank });
-}
-
-/** Increment stats after a session. */
-export async function incrementStats(uid, answered, correct, chapterId) {
-  if (!firebaseReady) return;
-  const ref = doc(db, "users", uid);
-  const updateData = {
-    totalAnswered: increment(answered),
-    totalCorrect: increment(correct)
-  };
-  if (chapterId) {
-    updateData[`chapterStats.ch${chapterId}.answered`] = increment(answered);
-    updateData[`chapterStats.ch${chapterId}.correct`] = increment(correct);
+  if (!firebaseReady) {
+    return localEntries.slice(0, topN);
   }
-  await updateDoc(ref, updateData);
+
+  try {
+    const sortField = mode === "exam" ? "score" : "streak";
+    const ref = collection(db, "leaderboard", mode, "scores");
+    const q = query(ref, orderBy(sortField, "desc"), limit(topN));
+    const snap = await getDocs(q);
+    const remote = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    if (remote.length > 0) return remote;
+    return localEntries.slice(0, topN);
+  } catch (e) {
+    console.warn("getLeaderboard Firebase failed, returning local entries:", e);
+    return localEntries.slice(0, topN);
+  }
 }
+
+// Backward compatible aliases
+export const getCurrentUser = getFirebaseUser;
+export const onAuthChange = onFirebaseAuthStateChanged;
+export const signOutUser = signOutFirebase;
 
 export { auth, db, firebaseReady };

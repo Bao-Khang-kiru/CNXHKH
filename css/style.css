@@ -372,7 +372,7 @@ h1, h2, h3, h4 {
 
 .quiz-body {
   flex: 1;
-  padding: 24px 16px 100px;
+  padding: 20px 16px calc(115px + env(safe-area-inset-bottom, 0px));
 }
 
 .question-card {
@@ -488,13 +488,13 @@ h1, h2, h3, h4 {
   bottom: 0; left: 0; right: 0;
   background: var(--color-white);
   border-top: 1px solid var(--color-border);
-  padding: 12px 16px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  z-index: 50;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
+  z-index: 150;
+  box-shadow: 0 -2px 14px rgba(0,0,0,0.08);
 }
 .quiz-controls__left { display: flex; gap: 8px; }
 .quiz-controls__right { display: flex; gap: 8px; }
@@ -525,21 +525,21 @@ h1, h2, h3, h4 {
 /* --- Chatbot --- */
 .chatbot-toggle {
   position: fixed;
-  bottom: 80px;
-  right: 20px;
-  width: 52px;
-  height: 52px;
+  bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+  right: 18px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: var(--color-primary);
   color: white;
   border: none;
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: 180;
   transition: all var(--transition);
 }
 .chatbot-toggle:hover {
@@ -954,19 +954,6 @@ h1, h2, h3, h4 {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- Responsive --- */
-@media (max-width: 600px) {
-  .mode-grid {
-    grid-template-columns: 1fr;
-  }
-  .results-stats { gap: 16px; }
-  .chatbot-panel { width: calc(100vw - 32px); right: 16px; }
-  .navbar__name { display: none; }
-  .leaderboard-table th:nth-child(4),
-  .leaderboard-table td:nth-child(4) { display: none; }
-  .quiz-header { flex-wrap: wrap; }
-}
-
 /* --- Hero Section on index.html --- */
 .hero {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 60%, #0d1424 100%);
@@ -1008,3 +995,243 @@ h1, h2, h3, h4 {
   color: var(--color-text-muted);
 }
 .empty-state__icon { font-size: 3rem; margin-bottom: 12px; }
+
+/* --- Login Modal & Avatar Picker --- */
+.avatar-opt {
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+.avatar-opt:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+.avatar-opt:active {
+  transform: scale(0.95);
+}
+
+/* ================================================================
+   MOBILE & RESPONSIVE OPTIMIZATION
+   ================================================================ */
+
+/* Ensure smooth scrolling and tap optimization */
+button, a, input, select, textarea, .option-btn, .mode-card, .avatar-opt {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, select, textarea {
+  font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+}
+
+/* Base overlay safe scroll on mobile */
+.overlay {
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.overlay__box {
+  width: min(94vw, 440px);
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 28px 20px;
+}
+
+/* Medium screens & Tablets (< 768px) */
+@media (max-width: 768px) {
+  .hero {
+    padding: 32px 16px 24px;
+  }
+  .hero h1 {
+    font-size: 1.55rem;
+  }
+  .hero p {
+    font-size: 0.88rem;
+  }
+  .mode-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .mode-card {
+    padding: 20px 18px;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .results-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+/* Small Screens & Mobile Phones (< 600px) */
+@media (max-width: 600px) {
+  .navbar {
+    padding: 0 10px;
+    height: 56px;
+  }
+  .navbar__brand {
+    font-size: 0.95rem;
+    gap: 4px;
+  }
+  .navbar__right {
+    gap: 6px;
+  }
+  .navbar__name {
+    display: none;
+  }
+  .navbar .btn--sm {
+    padding: 6px 8px;
+    font-size: 0.76rem;
+  }
+  .navbar__avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  /* Quiz Layout on Mobile */
+  .quiz-header {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .quiz-progress-info, #progress-label {
+    font-size: 0.75rem;
+  }
+  .question-card {
+    padding: 18px 14px;
+    border-radius: 12px;
+  }
+  .question-text {
+    font-size: 1rem;
+    line-height: 1.55;
+    margin-bottom: 18px;
+  }
+  .option-btn {
+    padding: 12px 12px;
+    min-height: 48px;
+    font-size: 0.9rem;
+    gap: 10px;
+    border-radius: 10px;
+  }
+  .option-btn__label {
+    width: 26px;
+    height: 26px;
+    font-size: 0.75rem;
+  }
+  .option-btn__text {
+    font-size: 0.9rem;
+  }
+
+  /* Quiz bottom controls */
+  .quiz-controls {
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+  .quiz-controls .btn {
+    padding: 0 10px;
+    font-size: 0.82rem;
+    height: 40px;
+  }
+  #btn-next {
+    min-width: 100px;
+  }
+
+  /* Chatbot panel docked bottom-sheet style */
+  .chatbot-panel {
+    position: fixed;
+    bottom: calc(65px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: 65vh;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .chatbot-toggle {
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.25rem;
+  }
+
+  /* Leaderboard on Mobile */
+  .leaderboard-table th:nth-child(4),
+  .leaderboard-table td:nth-child(4),
+  .leaderboard-table th:nth-child(5),
+  .leaderboard-table td:nth-child(5) {
+    display: none;
+  }
+  .leaderboard-table th, .leaderboard-table td {
+    padding: 10px 6px;
+    font-size: 0.82rem;
+  }
+  .lb-avatar {
+    width: 24px;
+    height: 24px;
+    margin-right: 6px;
+  }
+
+  /* Results Screen */
+  .results-hero {
+    padding: 24px 12px 16px;
+  }
+  .results-trophy {
+    font-size: 3.2rem;
+    margin-bottom: 8px;
+  }
+  .results-score {
+    font-size: 2.2rem;
+  }
+  .results-stat__value {
+    font-size: 1.2rem;
+  }
+
+  /* Profile Screen */
+  .profile-hero {
+    padding: 20px 12px 12px;
+  }
+  .profile-avatar {
+    width: 65px;
+    height: 65px;
+  }
+  .profile-name {
+    font-size: 1.2rem;
+  }
+  .stat-card {
+    padding: 12px 8px;
+  }
+  .stat-card__val {
+    font-size: 1.35rem;
+  }
+  .chart-row__label {
+    width: 65px;
+    font-size: 0.72rem;
+  }
+
+  /* Modals on Mobile */
+  .overlay__box {
+    padding: 22px 14px;
+    width: 95%;
+  }
+  .avatar-opt {
+    font-size: 1.5rem !important;
+    padding: 4px 8px !important;
+  }
+}
+
+/* Very Small Screens (< 380px) */
+@media (max-width: 380px) {
+  .navbar__brand {
+    font-size: 0.85rem;
+  }
+  .navbar .btn--sm {
+    padding: 5px 6px;
+    font-size: 0.72rem;
+  }
+  .quiz-controls .btn {
+    font-size: 0.75rem;
+    padding: 0 8px;
+  }
+}

@@ -2,7 +2,8 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a2e" />
   <title>Bảng xếp hạng - CNXHKH Quiz</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>" />
@@ -130,17 +131,11 @@
   async function loadLeaderboard(mode) {
     loaded[mode] = true;
 
-    if (!firebaseReady) {
-      document.getElementById(`${mode}-loading`).classList.add("hidden");
-      document.getElementById(`${mode}-offline`).classList.remove("hidden");
-      return;
-    }
-
     try {
       const entries = await getLeaderboard(mode, 20);
       document.getElementById(`${mode}-loading`).classList.add("hidden");
 
-      if (entries.length === 0) {
+      if (!entries || entries.length === 0) {
         document.getElementById(`${mode}-empty`).classList.remove("hidden");
         return;
       }

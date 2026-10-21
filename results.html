@@ -2,7 +2,8 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a2e" />
   <title>Kết quả - CNXHKH Quiz</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>" />
@@ -87,8 +88,8 @@
 <div id="toast" class="toast"></div>
 
 <script type="module">
-  import { loadLastResult, saveLastResult, initNavAuth, showToast, formatTime, getScoreBadge } from "./js/app.js";
-  import { submitLeaderboardScore, getCurrentUser } from "./js/firebase.js";
+  import { loadLastResult, saveLastResult, initNavAuth, showToast, formatTime, getScoreBadge, getCurrentUser, openLoginModal } from "./js/app.js";
+  import { submitLeaderboardScore } from "./js/firebase.js";
 
   initNavAuth();
 
@@ -227,36 +228,43 @@
 
   function setupSaveButton(mode, data) {
     const btn = document.getElementById("btn-save-score");
+    if (!btn) return;
+    if (mode !== "exam" && mode !== "survival") return;
 
-    // Listen for auth state
-    document.addEventListener("authReady", async (e) => {
-      const user = e.detail;
-      if (user && (mode === "exam" || mode === "survival")) {
-        btn.classList.remove("hidden");
+    btn.classList.remove("hidden");
 
-        btn.addEventListener("click", async () => {
-          btn.disabled = true;
-          btn.innerHTML = '<span class="spinner"></span> Đang lưu...';
-          try {
-            const entry = {
-              uid: user.uid,
-              displayName: user.displayName || "Ẩn danh",
-              photoURL: user.photoURL || "",
-              ...data,
-              mode,
-              date: new Date().toISOString(),
-            };
-            const lbMode = mode === "survival" ? "survival" : "exam";
-            await submitLeaderboardScore(lbMode, entry);
-            btn.textContent = "✅ Đã lưu!";
-            showToast("Điểm đã được lưu lên Bảng xếp hạng!");
-          } catch (e) {
-            btn.disabled = false;
-            btn.textContent = "💾 Lưu lên Bảng xếp hạng";
-            showToast("Lỗi khi lưu điểm. Kiểm tra cấu hình Firebase.");
-            console.error(e);
-          }
+    const doSave = async (user) => {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Đang lưu...';
+      try {
+        const entry = {
+          uid: user.uid,
+          displayName: user.displayName || "Ẩn danh",
+          photoURL: user.photoURL || "",
+          ...data,
+          mode,
+          date: new Date().toISOString(),
+        };
+        const lbMode = mode === "survival" ? "survival" : "exam";
+        await submitLeaderboardScore(lbMode, entry);
+        btn.textContent = "✅ Đã lưu!";
+        showToast("Điểm đã được lưu lên Bảng xếp hạng!");
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = "💾 Lưu lên Bảng xếp hạng";
+        showToast("Lỗi khi lưu điểm.");
+        console.error(e);
+      }
+    };
+
+    btn.addEventListener("click", () => {
+      const user = getCurrentUser();
+      if (!user) {
+        openLoginModal((newUser) => {
+          doSave(newUser);
         });
+      } else {
+        doSave(user);
       }
     });
   }
